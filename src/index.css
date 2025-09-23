@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* App components (Tailwind @apply only in CSS files) */
+@layer components {
+  .btn { @apply rounded-2xl px-5 py-2 font-semibold shadow; min-height: 44px; }
+  .btn-accent { @apply text-white; }
+  .btn-neutral { @apply text-white; }
+  .pill { @apply rounded-2xl px-4 py-2 font-bold; }
+  .score-pill { @apply text-white; }
+}
+
+/* Non-apply pieces using CSS vars set in App via useBrandCSS */
+.btn-accent { background: var(--brand-accent); }
+.btn-accent:hover { filter: brightness(1.06); }
+.btn-neutral { background: rgba(148,163,184,0.15); }
+.btn-neutral:hover { background: rgba(148,163,184,0.25); }
+.score-pill { background: linear-gradient(90deg,#BA1ED3,#F11467); }
+
+/* Small shadow used widely */
+.shadow-card { box-shadow: 0 10px 25px rgba(0,0,0,.25); }
