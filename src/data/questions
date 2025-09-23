@@ -61,7 +61,7 @@ export const questions = [
     order: 4,
     category: "Ενδεκάδα",
     points: 1,
-    phase: "B",
+    phase: "A",
     lang: "el",
     prompt: "Ποιος παίκτης λείπει από την παρακάτω ενδεκάδα;",
     type: "open",
