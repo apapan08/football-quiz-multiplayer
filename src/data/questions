@@ -1,5 +1,12 @@
 // src/data/questions.js
-// Phased unlock via `phase`: "A" | "B" | "C". Optional hint/fact. Final question has isFinal: true.
+// Phased unlock via `phase`: "A" | "B" | "C". Optional hint/fact.
+// 50/50 authoring rules (universal):
+// - catalog: two strings (include the correct one); must be accepted by validator
+// - choices: two labels from q.choices (include the correct one)
+// - scoreline: two objects like { home: X, away: Y } (include the correct one)
+// - numeric: two numbers (include the correct one)
+// Final question has isFinal: true (or false if you want it in the normal flow)
+
 export const questions = [
   {
     id: "q4-saka-second-nationality",
@@ -18,6 +25,8 @@ export const questions = [
     answer: "Νιγηρία",
     hint: "Αφρικανική χώρα της Δυτικής Αφρικής.",
     fact: "Ο Saka έχει καταγωγή από τη Νιγηρία.",
+    // catalog → two strings; include correct
+    fifty: ["Νιγηρία", "Γκάνα"],
   },
 
   {
@@ -36,6 +45,8 @@ export const questions = [
     acceptScores: [{ home: 1, away: 1 }],
     answer: "Chelsea – Barcelona 1–1",
     hint: "Αμφίρροπο, χωρίς νικητή.",
+    // scoreline → two score objects; include correct
+    fifty: [{ home: 1, away: 1 }, { home: 2, away: 2 }],
   },
 
   {
@@ -54,6 +65,8 @@ export const questions = [
     accept: ["Nicolas Otamendi"],
     answer: "Nicolas Otamendi",
     hint: "Αργεντινός, γνωστός για τη σκληρή άμυνα.",
+    // catalog → two strings; include correct
+    fifty: ["Nicolas Otamendi", "Marcos Rojo"],
   },
 
   {
@@ -72,6 +85,8 @@ export const questions = [
     accept: ["Dejan Lovren"],
     answer: "Dejan Lovren",
     hint: "Κροάτης κεντρικός αμυντικός.",
+    // catalog → two strings; include correct
+    fifty: ["Dejan Lovren", "Domagoj Vida"],
   },
 
   {
@@ -89,6 +104,8 @@ export const questions = [
     accept: ["AC Milan", "Milan"],
     answer: "AC Milan",
     hint: "Ιταλία.",
+    // catalog → two strings; include correct
+    fifty: ["AC Milan", "Real Madrid"],
   },
 
   {
@@ -107,6 +124,8 @@ export const questions = [
     accept: ["Roberto Carlos"],
     answer: "Roberto Carlos",
     hint: "Ισχυρό αριστερό σουτ.",
+    // catalog → two strings; include correct
+    fifty: ["Roberto Carlos", "Adriano"],
   },
 
   {
@@ -125,6 +144,8 @@ export const questions = [
     accept: ["FK Bodø/Glimt", "Bodø/Glimt", "Bodo/Glimt"],
     answer: "FK Bodø/Glimt",
     hint: "Νορβηγία, κοντά στον Αρκτικό Κύκλο.",
+    // catalog → two strings; include correct
+    fifty: ["FK Bodø/Glimt", "FC Copenhagen"],
   },
 
   {
@@ -141,16 +162,20 @@ export const questions = [
     answerMode: "catalog",
     catalog: "players",
     accept: ["Lucas Hernandez", "Lucas Hernández"],
+    // Shown string can stay descriptive; validator accepts the name.
     answer: "Lucas Hernandez to Bayern (2019)",
     hint: "Μεταγραφή στη Γερμανία.",
+    // catalog → two strings; include correct
+    fifty: ["Lucas Hernandez", "Rodri"],
   },
 
-  // FINAL — kept numeric here (optional media)
+  // FINAL — numeric
   {
     id: "q9-iconic-managers-count",
     order: 9,
     category: "Iconic Managers",
     points: 1,
+    phase: "C",
     isFinal: false,
     lang: "el",
     prompt:
@@ -162,5 +187,7 @@ export const questions = [
     acceptNumber: 8,
     answer:
       "8 ομάδες: Niki Volos, Iraklis, APOEL, Panachaiki, Al Nasr, United Arab Emirates, Panathinaikos, Greece",
+    // numeric → two numbers; include correct
+    fifty: [8, 9],
   },
 ];

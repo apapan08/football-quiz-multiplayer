@@ -106,11 +106,14 @@ function splitQuestions(arr) {
   const nonFinals = arr.filter((q) => !q.isFinal);
   return { finals, nonFinals };
 }
-function phaseForTurn(turnNumberForPlayer, turnsPerPlayer) {
-  const t = Math.max(1, turnNumberForPlayer); // 1-based
-  const third = Math.ceil(turnsPerPlayer / 3);
-  if (t <= third) return "A";
-  if (t <= third * 2) return "B";
+
+// Phases are unlocked strictly from questions.js:
+// While any A remains → only A playable; else while any B remains → only B; else C.
+function currentUnlockedPhase(allNonFinals, usedIds) {
+  const remainBy = (ph) =>
+    allNonFinals.some((q) => q.phase === ph && !usedIds.includes(q.id));
+  if (remainBy("A")) return "A";
+  if (remainBy("B")) return "B";
   return "C";
 }
 function streakMultiplier(streakCount) {
@@ -147,13 +150,14 @@ export default function App() {
       selectedQuestionId: null,
       x2ThisTurn: false,
       usedHelpThisQuestion: false,
-      fiftyEnabledIds: [],
+      fiftyEnabledIds: [],           // for CHOICES mode
+      fiftyQuickOptions: null,       // for non-catalog quick picks via q.fifty
       hintShown: false,
       stealOffered: false,
       stealAccepted: false,
       stealBy: null,
       answerValue: null,
-      revealChoices: null,
+      revealChoices: null,           // kept for backward compatibility; catalog multiple-choice
     },
     finale: {
       enabled: finals.length > 0,
@@ -172,14 +176,11 @@ export default function App() {
   const otherKey = activeKey === "p1" ? "p2" : "p1";
   const activePlayer = state[activeKey];
 
-  const turnsPerPlayer = Math.ceil(nonFinals.length / 2);
-  const myTurnsTaken = state.perPlayerTurnsTaken[activeKey] || 0;
-  const myUpcomingTurnNumber = myTurnsTaken + 1;
-  const myPhase = phaseForTurn(myUpcomingTurnNumber, turnsPerPlayer);
-
-  const availableQuestions = useMemo(() => {
-    return nonFinals.filter((q) => !state.usedQuestionIds.includes(q.id));
-  }, [nonFinals, state.usedQuestionIds]);
+  // Global phase (A→B→C) based on used questions
+  const myPhase = useMemo(
+    () => currentUnlockedPhase(nonFinals, state.usedQuestionIds),
+    [nonFinals, state.usedQuestionIds]
+  );
 
   function resetMatch() {
     setState((_) => ({
@@ -195,6 +196,7 @@ export default function App() {
         x2ThisTurn: false,
         usedHelpThisQuestion: false,
         fiftyEnabledIds: [],
+        fiftyQuickOptions: null,
         hintShown: false,
         stealOffered: false,
         stealAccepted: false,
@@ -323,12 +325,14 @@ export default function App() {
     );
   }
 
+  // ---------- CATEGORY: show ALL phases; lock non-current; keep USED pills grey ----------
   function CategoryStage() {
     const selectedPhase = myPhase;
 
+    // Build from ALL non-final questions (no filtering by phase or used)
     const byCategory = useMemo(() => {
       const map = new Map();
-      for (const q of availableQuestions) {
+      for (const q of nonFinals) {
         if (!map.has(q.category)) map.set(q.category, []);
         map.get(q.category).push(q);
       }
@@ -336,13 +340,13 @@ export default function App() {
         arr.sort((a, b) => a.points - b.points || (a.order || 0) - (b.order || 0));
       }
       return Array.from(map.entries());
-    }, [availableQuestions]);
-
-    function isLocked(q) {
-      return q.phase && q.phase !== selectedPhase;
-    }
+    }, [nonFinals]);
 
     function onPick(q) {
+      const isUsed = state.usedQuestionIds.includes(q.id);
+      const locked = q.phase && q.phase !== selectedPhase;
+      if (isUsed || locked) return; // do nothing on disabled chips
+
       setState((st) => ({
         ...st,
         stage: STAGES.READY,
@@ -352,6 +356,7 @@ export default function App() {
           x2ThisTurn: false,
           usedHelpThisQuestion: false,
           fiftyEnabledIds: [],
+          fiftyQuickOptions: null,
           hintShown: false,
           stealOffered: false,
           stealAccepted: false,
@@ -389,23 +394,46 @@ export default function App() {
               </div>
               <div className="flex items-center gap-2">
                 {arr.map((q) => {
-                  const locked = isLocked(q);
+                  const isUsed = state.usedQuestionIds.includes(q.id);
+                  const locked = q.phase && q.phase !== selectedPhase;
+                  const disabled = locked || isUsed;
+
+                  const bg = disabled
+                    ? "rgba(148,163,184,0.25)" // grey
+                    : THEME.badgeGradient;
+
+                  const title = locked
+                    ? "Ξεκλειδώνει αργότερα"
+                    : isUsed
+                    ? "Έχει ήδη παιχτεί"
+                    : `${q.points} πόντοι`;
+
                   return (
                     <button
                       key={q.id}
                       className="h-9 min-w-9 rounded-full px-3 text-white text-sm font-semibold shadow relative"
-                      title={locked ? "Ξεκλειδώνει αργότερα" : `${q.points} πόντοι`}
+                      title={title}
                       style={{
-                        background: locked ? "rgba(148,163,184,0.25)" : THEME.badgeGradient,
-                        opacity: locked ? 0.5 : 1,
+                        background: bg,
+                        opacity: disabled ? 0.6 : 1,
                         border: "1px solid rgba(255,255,255,0.18)",
+                        cursor: disabled ? "not-allowed" : "pointer",
                       }}
-                      aria-label={locked ? "Κλειδωμένο" : `Ερώτηση ${q.points} πόντοι`}
-                      disabled={locked}
+                      aria-label={disabled ? "Μη διαθέσιμο" : `Ερώτηση ${q.points} πόντοι`}
+                      disabled={disabled}
                       onClick={() => onPick(q)}
                     >
                       x{q.points}
-                      {locked && <span className="absolute -top-1 -right-1 text-xs" aria-hidden>🔒</span>}
+                      {locked && (
+                        <span className="absolute -top-1 -right-1 text-xs" aria-hidden>
+                          🔒
+                        </span>
+                      )}
+                      {isUsed && !locked && (
+                        <span className="absolute -top-1 -right-1 text-xs" aria-hidden>
+                          ✓
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -474,7 +502,7 @@ export default function App() {
     );
   }
 
-  // Build multiple-choice from catalog for 50/50
+  // Build multiple-choice from catalog for 50/50 (legacy).
   const buildChoicesRef = useRef(null);
   useEffect(() => {
     buildChoicesRef.current = async (q) => {
@@ -508,18 +536,60 @@ export default function App() {
     const [inputValue, setInputValue] = useState("");
     const [scoreValue, setScoreValue] = useState({ home: 0, away: 0 });
 
-    useEffect(() => {
-      let mounted = true;
-      (async () => {
-        if (q && q.answerMode === "catalog" && !state.current.revealChoices) {
-          const opts = await buildChoicesRef.current(q);
-          if (mounted && opts)
-            setState((st) => ({ ...st, current: { ...st.current, revealChoices: opts } }));
+useEffect(() => {
+  if (!q) return;
+  let cancelled = false;
+
+  (async () => {
+    if (q.answerMode === "catalog") {
+      // Generate choices once per question, only if missing
+      if (!state.current.revealChoices) {
+        const opts = await buildChoicesRef.current(q);
+        if (!cancelled && opts) {
+          setState(st => {
+            // guard: if something else already set them, skip
+            if (st.current.revealChoices) return st;
+            return { ...st, current: { ...st.current, revealChoices: opts } };
+          });
         }
-      })();
-      return () => { mounted = false; };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [q?.id]);
+      }
+
+      // Ensure quick-pick state is clean only if needed
+      if (
+        state.current.fiftyQuickOptions != null ||
+        (state.current.fiftyEnabledIds && state.current.fiftyEnabledIds.length > 0)
+      ) {
+        setState(st => ({
+          ...st,
+          current: { ...st.current, fiftyQuickOptions: null, fiftyEnabledIds: [] },
+        }));
+      }
+    } else {
+      // Non-catalog: clear revealChoices only if it exists
+      if (state.current.revealChoices) {
+        setState(st => ({
+          ...st,
+          current: { ...st.current, revealChoices: null, fiftyEnabledIds: [] },
+        }));
+      }
+
+      // Also clear quick picks only if needed
+      if (
+        state.current.fiftyQuickOptions != null ||
+        (state.current.fiftyEnabledIds && state.current.fiftyEnabledIds.length > 0)
+      ) {
+        setState(st => ({
+          ...st,
+          current: { ...st.current, fiftyQuickOptions: null, fiftyEnabledIds: [] },
+        }));
+      }
+    }
+  })();
+
+  return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [q?.id]);
+
 
     const canUsePostHelps =
       activePlayer.helpsLeft > 0 &&
@@ -527,14 +597,28 @@ export default function App() {
       !state.current.x2ThisTurn;
 
     function useFifty() {
-      if (!canUsePostHelps || !state.current.revealChoices) return;
-      const wrongs = state.current.revealChoices.filter((c) => !c.isCorrect);
-      const toHide = wrongs.slice(0, 2).map((c) => c.id);
-      setState((st) => ({
-        ...st,
-        current: { ...st.current, usedHelpThisQuestion: true, fiftyEnabledIds: toHide },
-        [activeKey]: { ...st[activeKey], helpsLeft: Math.max(0, st[activeKey].helpsLeft - 1) },
-      }));
+      if (!canUsePostHelps) return;
+
+      // CASE A — catalog with revealChoices: hide two wrong options
+      if (q.answerMode === "catalog" && state.current.revealChoices) {
+        const wrongs = state.current.revealChoices.filter((c) => !c.isCorrect);
+        const toHide = wrongs.slice(0, 2).map((c) => c.id);
+        setState((st) => ({
+          ...st,
+          current: { ...st.current, usedHelpThisQuestion: true, fiftyEnabledIds: toHide },
+          [activeKey]: { ...st[activeKey], helpsLeft: Math.max(0, st[activeKey].helpsLeft - 1) },
+        }));
+        return;
+      }
+
+      // CASE B — universal 50/50 for non-catalog (or catalog before reveal) using q.fifty
+      if (Array.isArray(q.fifty) && q.fifty.length === 2) {
+        setState((st) => ({
+          ...st,
+          current: { ...st.current, usedHelpThisQuestion: true, fiftyQuickOptions: q.fifty.slice(0, 2) },
+          [activeKey]: { ...st[activeKey], helpsLeft: Math.max(0, st[activeKey].helpsLeft - 1) },
+        }));
+      }
     }
 
     function useHint() {
@@ -631,6 +715,19 @@ export default function App() {
           {q.answerMode === "scoreline" && (
             <div className="flex flex-col items-center gap-3">
               <ScoreInput value={scoreValue} onChange={setScoreValue} />
+              {Array.isArray(state.current.fiftyQuickOptions) && state.current.fiftyQuickOptions.length === 2 && (
+                <div className="flex flex-wrap gap-2">
+                  {state.current.fiftyQuickOptions.map((opt, i) => (
+                    <button
+                      key={`ff-${i}-${opt?.home}-${opt?.away}`}
+                      className="btn btn-neutral"
+                      onClick={() => submitAnswer(opt)}
+                    >
+                      {(q?.teams?.home ?? "Home")} – {(q?.teams?.away ?? "Away")} {opt.home}–{opt.away}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="flex flex-wrap gap-3 justify-center">
                 <button className="btn btn-accent" onClick={() => submitAnswer(scoreValue)}>
                   Υποβολή σκορ
@@ -643,8 +740,17 @@ export default function App() {
           {q.answerMode === "numeric" && (
             <form
               className="flex flex-col items-stretch gap-3"
-              onSubmit={(e) => { e.preventDefault(); submitAnswer(inputValue); }}
+              onSubmit={(e) => { e.preventDefault(); submitAnswer(Number(inputValue)); }}
             >
+              {Array.isArray(state.current.fiftyQuickOptions) && state.current.fiftyQuickOptions.length === 2 && (
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {state.current.fiftyQuickOptions.map((n, i) => (
+                    <button key={`ffn-${i}-${n}`} className="btn btn-neutral" onClick={(e) => { e.preventDefault(); submitAnswer(Number(n)); }}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              )}
               <input
                 type="number"
                 inputMode="numeric"
@@ -665,6 +771,15 @@ export default function App() {
               className="flex flex-col items-stretch gap-3"
               onSubmit={(e) => { e.preventDefault(); submitAnswer(inputValue); }}
             >
+              {Array.isArray(state.current.fiftyQuickOptions) && state.current.fiftyQuickOptions.length === 2 && (
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {state.current.fiftyQuickOptions.map((t, i) => (
+                    <button key={`fft-${i}-${t}`} className="btn btn-neutral" onClick={(e) => { e.preventDefault(); submitAnswer(t); }}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              )}
               <input
                 className="w-full rounded-xl bg-slate-900/60 px-4 py-3 text-slate-100 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-pink-400"
                 placeholder="Γράψε την απάντησή σου…"
@@ -686,13 +801,18 @@ export default function App() {
           <button
             className="btn btn-neutral"
             onClick={useFifty}
-            disabled={!canUsePostHelps || !state.current.revealChoices}
+            disabled={
+              !canUsePostHelps ||
+              (!state.current.revealChoices && !(Array.isArray(q.fifty) && q.fifty.length === 2))
+            }
             title={
               state.current.x2ThisTurn
                 ? "Το Χ2 δεν συνδυάζεται"
-                : !state.current.revealChoices
-                ? "Διαθέσιμο μόνο σε ερωτήσεις καταλόγου"
-                : "Κρύψε 2 λάθος επιλογές"
+                : state.current.revealChoices
+                ? "Κρύψε 2 λάθος επιλογές"
+                : (Array.isArray(q.fifty) && q.fifty.length === 2)
+                ? "Δείξε 2 επιλογές 50/50"
+                : "Δεν υπάρχει διαθέσιμο 50/50 γι’ αυτή την ερώτηση"
             }
           >
             50/50
@@ -742,6 +862,24 @@ export default function App() {
     }, []);
 
     const userAnswerStr = prettyAnswer(q, state.current.answerValue);
+    const correctnessKnown =
+      (result && typeof result.correct === "boolean") ||
+      state.__lastOwnTurnCorrect !== null;
+    const wasCorrect =
+      (result && typeof result.correct === "boolean")
+        ? result.correct
+        : state.__lastOwnTurnCorrect === true;
+
+    const preAwardPoints = wasCorrect
+      ? finalizePoints(
+          q.points *
+            (state.current.x2ThisTurn ? 2 : 1) *
+            streakMultiplier(state[state.active].streak + 1)
+        )
+      : 0;
+
+    const hideTrueAnswer =
+      !wasCorrect && state.current.stealOffered && state.current.stealBy == null;
 
     return (
       <StageCard>
@@ -753,17 +891,41 @@ export default function App() {
         </div>
 
         <div className="text-center mt-4">
-          <div className="font-display text-3xl font-extrabold text-white">{q.answer}</div>
+          {!hideTrueAnswer && (
+            <div className="font-display text-3xl font-extrabold text-white">
+              {q.answer}
+            </div>
+          )}
+
           <div className="mt-3 font-ui text-sm">
             <div
               className="inline-flex items-center gap-2 rounded-lg px-3 py-2"
-              style={{ background: "rgba(148,163,184,0.10)", border: "1px solid rgba(255,255,255,0.12)" }}
+              style={{
+                background: "rgba(148,163,184,0.10)",
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}
             >
               <span style={{ opacity: 0.85 }}>Απάντηση Παίκτη:</span>
-              <span className="italic text-slate-100">{userAnswerStr || "—"}</span>
+              <span className="italic text-slate-100">
+                {userAnswerStr || "—"}
+              </span>
+              {correctnessKnown && (
+                <span
+                  className="ml-2 inline-flex items-center justify-center rounded-full px-2.5 py-1 text-xs font-bold text-white"
+                  style={{
+                    background: wasCorrect ? THEME.positiveGrad : THEME.negativeGrad,
+                  }}
+                  aria-label={wasCorrect ? "Σωστό" : "Λάθος"}
+                >
+                  {wasCorrect ? "✓" : "✗"} {wasCorrect ? `+${preAwardPoints}` : "0"}
+                </span>
+              )}
             </div>
           </div>
-          {q.fact && <div className="mt-2 font-ui text-sm text-slate-300">ℹ️ {q.fact}</div>}
+
+          {q.fact && (
+            <div className="mt-2 font-ui text-sm text-slate-300">ℹ️ {q.fact}</div>
+          )}
         </div>
 
         {state.current.stealOffered && state.current.stealBy == null && <StealPrompt />}
@@ -773,9 +935,12 @@ export default function App() {
             <button
               className="btn btn-accent"
               onClick={() => {
-                const wasCorrect = state.__lastOwnTurnCorrect === true;
-                if (!wasCorrect) {
-                  setState((st) => ({ ...st, current: { ...st.current, stealOffered: true } }));
+                const wasOwnCorrect = state.__lastOwnTurnCorrect === true;
+                if (!wasOwnCorrect) {
+                  setState((st) => ({
+                    ...st,
+                    current: { ...st.current, stealOffered: true },
+                  }));
                 } else {
                   finishTurnAdvance();
                 }
@@ -845,8 +1010,6 @@ export default function App() {
         <h3 className="mt-4 font-display text-2xl font-bold text-white">
           {state[stealerKey].name}: Απόπειρα κλεψίματος
         </h3>
-
-        <div className="mt-2 text-slate-300 text-sm">Καμία βοήθεια δεν επιτρέπεται.</div>
 
         {q.answerMode === "catalog" && (
           <AutoCompleteAnswer
@@ -1150,6 +1313,7 @@ export default function App() {
         x2ThisTurn: false,
         usedHelpThisQuestion: false,
         fiftyEnabledIds: [],
+        fiftyQuickOptions: null,
         hintShown: false,
         stealOffered: false,
         stealAccepted: false,
@@ -1162,8 +1326,9 @@ export default function App() {
       st.perPlayerTurnsTaken[activeKey] = (st.perPlayerTurnsTaken[activeKey] || 0) + 1;
       st.turnIndex += 1;
 
-      const left = nonFinals.filter((q) => !st.usedQuestionIds.includes(q.id)).length;
-      if (left <= 0) {
+      // Advance stage/phase based on remaining questions
+      const anyLeft = nonFinals.some((q) => !st.usedQuestionIds.includes(q.id));
+      if (!anyLeft) {
         if (st.finale.enabled) st.stage = STAGES.FINALE_WAGER;
         else st.stage = STAGES.RESULTS;
       } else {
