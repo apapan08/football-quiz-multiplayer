@@ -125,6 +125,177 @@ function finalizePoints(p) {
   return Math.max(0, Math.round(p));
 }
 
+function StageCard({ children }) {
+  return (
+    <div className="mx-auto w-full max-w-3xl px-3 py-4">
+      <div
+        className="rounded-2xl p-4 md:p-6 shadow-card"
+        style={{ background: "var(--brand-card)", border: "1px solid var(--brand-border)" }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function QuestionStage({
+  q,
+  state,
+  canUsePostHelpsNow,
+  useFiftyHelp,
+  useHintHelp,
+  prettyAnswer,
+  submitAnswer,
+  passAnswer,
+}) {
+  const [inputValue, setInputValue] = useState("");
+  const [scoreValue, setScoreValue] = useState({ home: 0, away: 0 });
+
+  if (!q) return null;
+
+  return (
+    <StageCard>
+      <div className="flex items-center justify-between">
+        <Logo />
+        <div className="flex items-center gap-2">
+          <div className="rounded-full bg-slate-700/70 px-3 py-1 text-xs font-semibold text-white">
+            {q.points} πόντοι
+          </div>
+          {state.current.x2ThisTurn && (
+            <div className="rounded-full px-3 py-1 text-xs font-semibold text-white" style={{ background: THEME.badgeGradient }}>
+              ×2
+            </div>
+          )}
+        </div>
+      </div>
+
+      <h3 className="mt-4 font-display text-2xl font-bold text-white">{q.prompt}</h3>
+
+      {q.media ? (
+        <div className="mt-4">
+          {/* key ensures remount on hint */}
+          <Media key={`media-${q.id}-${state.current.mediaRefreshToken || 0}`} media={{ ...q.media, priority: true }} />
+        </div>
+      ) : null}
+
+      <div className="mt-5">
+        {/* CATALOG — type-ahead by default; two quick-picks after 50/50 */}
+        {q.answerMode === "catalog" && (
+          <>
+            <AutoCompleteAnswer
+              catalog={q.catalog}
+              placeholder="Άρχισε να πληκτρολογείς…"
+              onSelect={(item) => submitAnswer(item?.name || "")}
+              onChangeText={(t) => setInputValue(t)}
+            />
+
+            <div className="flex flex-wrap gap-3 justify-center mt-3">
+              <button className="btn btn-accent" onClick={() => submitAnswer(inputValue)}>
+                Υποβολή
+              </button>
+              <button className="btn btn-neutral" onClick={passAnswer}>Πάσο</button>
+            </div>
+          </>
+        )}
+
+        {/* SCORELINE */}
+        {q.answerMode === "scoreline" && (
+          <div className="flex flex-col items-center gap-3">
+            <ScoreInput value={scoreValue} onChange={setScoreValue} />
+            <div className="flex flex-wrap gap-3 justify-center">
+              <button className="btn btn-accent" onClick={() => submitAnswer(scoreValue)}>
+                Υποβολή σκορ
+              </button>
+              <button className="btn btn-neutral" onClick={passAnswer}>Πάσο</button>
+            </div>
+          </div>
+        )}
+
+        {/* NUMERIC */}
+        {q.answerMode === "numeric" && (
+          <form
+            className="flex flex-col items-stretch gap-3"
+            onSubmit={(e) => { e.preventDefault(); submitAnswer(Number(inputValue)); }}
+          >
+            <input
+              type="number"
+              inputMode="numeric"
+              className="w-full rounded-xl bg-slate-900/60 px-4 py-3 text-slate-100 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-pink-400"
+              placeholder="Πληκτρολόγησε αριθμό…"
+              value={inputValue ?? ""}
+              onChange={(e) => setInputValue(e.target.value)}
+            />
+            <div className="flex flex-wrap gap-3 justify-center">
+              <button type="submit" className="btn btn-accent">Υποβολή</button>
+              <button type="button" className="btn btn-neutral" onClick={passAnswer}>Πάσο</button>
+            </div>
+          </form>
+        )}
+
+        {/* TEXT */}
+        {q.answerMode === "text" && (
+          <form
+            className="flex flex-col items-stretch gap-3"
+            onSubmit={(e) => { e.preventDefault(); submitAnswer(inputValue); }}
+          >
+            <input
+              className="w-full rounded-xl bg-slate-900/60 px-4 py-3 text-slate-100 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-pink-400"
+              placeholder="Γράψε την απάντησή σου…"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <div className="flex flex-wrap gap-3 justify-center">
+              <button type="submit" className="btn btn-accent">Υποβολή</button>
+              <button type="button" className="btn btn-neutral" onClick={passAnswer}>Πάσο</button>
+            </div>
+          </form>
+        )}
+      </div>
+
+      {/* Post-reveal helps (mirrored with header behavior) */}
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-sm">
+        <button
+          className="btn btn-neutral"
+          onClick={useFiftyHelp}
+          disabled={!canUsePostHelpsNow() || !(Array.isArray(q.fifty) && q.fifty.length === 2)}
+          title={
+            state.current.x2ThisTurn
+              ? "Το Χ2 δεν συνδυάζεται"
+              : Array.isArray(q.fifty) && q.fifty.length === 2
+              ? "Δείξε 2 επιλογές 50/50"
+              : "Δεν υπάρχει διαθέσιμο 50/50 γι’ αυτή την ερώτηση"
+          }
+        >
+          50/50
+        </button>
+        <button
+          className="btn btn-neutral"
+          onClick={useHintHelp}
+          disabled={!canUsePostHelpsNow() || !q.hint}
+          title={
+            state.current.x2ThisTurn
+              ? "Το Χ2 δεν συνδυάζεται"
+              : q.hint
+              ? "Σύντομη βοήθεια"
+              : "Δεν υπάρχει hint"
+          }
+        >
+          Hint
+        </button>
+        {Array.isArray(state.current.fiftyQuickOptions) && state.current.fiftyQuickOptions.length === 2 && (
+          <div className="text-slate-200 italic text-center">50/50: {state.current.fiftyQuickOptions.map(opt => prettyAnswer(q, opt)).join('  ή  ')}</div>
+        )}
+        {state.current.hintShown && q.hint && (
+          <div className="text-slate-200 italic text-center">{q.hint}</div>
+        )}
+      </div>
+    </StageCard>
+  );
+}
+
+
 // ——— Main App ———
 export default function App() {
   useBrandCSS();
@@ -278,7 +449,6 @@ export default function App() {
         ...st.current,
         usedHelpThisQuestion: true,
         hintShown: true,
-        mediaRefreshToken: (st.current.mediaRefreshToken || 0) + 1, // force Media remount
       },
       [activeKey]: {
         ...st[activeKey],
@@ -389,19 +559,6 @@ export default function App() {
           </div>
         </div>
       </header>
-    );
-  }
-
-  function StageCard({ children }) {
-    return (
-      <div className="mx-auto w-full max-w-3xl px-3 py-4">
-        <div
-          className="rounded-2xl p-4 md:p-6 shadow-card"
-          style={{ background: "var(--brand-card)", border: "1px solid var(--brand-border)" }}
-        >
-          {children}
-        </div>
-      </div>
     );
   }
 
@@ -612,178 +769,6 @@ export default function App() {
 
         <div className="mt-6 text-slate-300 text-sm">
           Βοήθειες {activeKey.toUpperCase()}: διαθέσιμες {activePlayer.helpsLeft}. Το Χ2 καταναλώνει 1 βοήθεια και δεν συνδυάζεται με άλλες.
-        </div>
-      </StageCard>
-    );
-  }
-
-  function QuestionStage() {
-    const q = useMemo(
-      () => RAW_QUESTIONS.find((x) => x.id === state.current.selectedQuestionId),
-      [state.current.selectedQuestionId]
-    );
-
-    const [inputValue, setInputValue] = useState("");
-    const [scoreValue, setScoreValue] = useState({ home: 0, away: 0 });
-
-    
-
-    const canUsePostHelps = canUsePostHelpsNow();
-
-    async function submitAnswer(raw) {
-      setState((st) => ({ ...st, current: { ...st.current, answerValue: raw } }));
-      setStage(STAGES.ANSWER);
-      if (q.answerMode !== "text") {
-        const result = await validateAny(q, raw);
-        resolveOwnTurn(result.correct);
-      }
-    }
-
-    function passAnswer() {
-      setState((st) => ({ ...st, current: { ...st.current, answerValue: "" } }));
-      setStage(STAGES.ANSWER);
-      resolveOwnTurn(false, true);
-    }
-
-    if (!q) return null;
-
-    return (
-      <StageCard>
-        <div className="flex items-center justify-between">
-          <Logo />
-          <div className="flex items-center gap-2">
-            <div className="rounded-full bg-slate-700/70 px-3 py-1 text-xs font-semibold text-white">
-              {q.points} πόντοι
-            </div>
-            {state.current.x2ThisTurn && (
-              <div className="rounded-full px-3 py-1 text-xs font-semibold text-white" style={{ background: THEME.badgeGradient }}>
-                ×2
-              </div>
-            )}
-          </div>
-        </div>
-
-        <h3 className="mt-4 font-display text-2xl font-bold text-white">{q.prompt}</h3>
-
-        {q.media ? (
-          <div className="mt-4">
-            {/* key ensures remount on hint */}
-            <Media key={`media-${q.id}-${state.current.mediaRefreshToken || 0}`} media={{ ...q.media, priority: true }} />
-          </div>
-        ) : null}
-
-        <div className="mt-5">
-          {/* CATALOG — type-ahead by default; two quick-picks after 50/50 */}
-          {q.answerMode === "catalog" && (
-            <>
-              <AutoCompleteAnswer
-                catalog={q.catalog}
-                placeholder="Άρχισε να πληκτρολογείς…"
-                onSelect={(item) => submitAnswer(item?.name || "")}
-                onChangeText={(t) => setInputValue(t)}
-              />
-
-              <div className="flex flex-wrap gap-3 justify-center mt-3">
-                <button className="btn btn-accent" onClick={() => submitAnswer(inputValue)}>
-                  Υποβολή
-                </button>
-                <button className="btn btn-neutral" onClick={passAnswer}>Πάσο</button>
-              </div>
-            </>
-          )}
-
-          {/* SCORELINE */}
-          {q.answerMode === "scoreline" && (
-            <div className="flex flex-col items-center gap-3">
-              <ScoreInput value={scoreValue} onChange={setScoreValue} />
-              <div className="flex flex-wrap gap-3 justify-center">
-                <button className="btn btn-accent" onClick={() => submitAnswer(scoreValue)}>
-                  Υποβολή σκορ
-                </button>
-                <button className="btn btn-neutral" onClick={passAnswer}>Πάσο</button>
-              </div>
-            </div>
-          )}
-
-          {/* NUMERIC */}
-          {q.answerMode === "numeric" && (
-            <form
-              className="flex flex-col items-stretch gap-3"
-              onSubmit={(e) => { e.preventDefault(); submitAnswer(Number(inputValue)); }}
-            >
-              <input
-                type="number"
-                inputMode="numeric"
-                className="w-full rounded-xl bg-slate-900/60 px-4 py-3 text-slate-100 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-pink-400"
-                placeholder="Πληκτρολόγησε αριθμό…"
-                value={inputValue ?? ""}
-                onChange={(e) => setInputValue(e.target.value)}
-              />
-              <div className="flex flex-wrap gap-3 justify-center">
-                <button type="submit" className="btn btn-accent">Υποβολή</button>
-                <button type="button" className="btn btn-neutral" onClick={passAnswer}>Πάσο</button>
-              </div>
-            </form>
-          )}
-
-          {/* TEXT */}
-          {q.answerMode === "text" && (
-            <form
-              className="flex flex-col items-stretch gap-3"
-              onSubmit={(e) => { e.preventDefault(); submitAnswer(inputValue); }}
-            >
-              <input
-                className="w-full rounded-xl bg-slate-900/60 px-4 py-3 text-slate-100 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-pink-400"
-                placeholder="Γράψε την απάντησή σου…"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                autoComplete="off"
-                spellCheck={false}
-              />
-              <div className="flex flex-wrap gap-3 justify-center">
-                <button type="submit" className="btn btn-accent">Υποβολή</button>
-                <button type="button" className="btn btn-neutral" onClick={passAnswer}>Πάσο</button>
-              </div>
-            </form>
-          )}
-        </div>
-
-        {/* Post-reveal helps (mirrored with header behavior) */}
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-sm">
-          <button
-            className="btn btn-neutral"
-            onClick={useFiftyHelp}
-            disabled={!canUsePostHelps || !(Array.isArray(q.fifty) && q.fifty.length === 2)}
-            title={
-              state.current.x2ThisTurn
-                ? "Το Χ2 δεν συνδυάζεται"
-                : Array.isArray(q.fifty) && q.fifty.length === 2
-                ? "Δείξε 2 επιλογές 50/50"
-                : "Δεν υπάρχει διαθέσιμο 50/50 γι’ αυτή την ερώτηση"
-            }
-          >
-            50/50
-          </button>
-          <button
-            className="btn btn-neutral"
-            onClick={useHintHelp}
-            disabled={!canUsePostHelps || !q.hint}
-            title={
-              state.current.x2ThisTurn
-                ? "Το Χ2 δεν συνδυάζεται"
-                : q.hint
-                ? "Σύντομη βοήθεια"
-                : "Δεν υπάρχει hint"
-            }
-          >
-            Hint
-          </button>
-          {Array.isArray(state.current.fiftyQuickOptions) && state.current.fiftyQuickOptions.length === 2 && (
-            <div className="text-slate-200 italic text-center">50/50: {state.current.fiftyQuickOptions.map(opt => prettyAnswer(q, opt)).join('  ή  ')}</div>
-          )}
-          {state.current.hintShown && q.hint && (
-            <div className="text-slate-200 italic text-center">{q.hint}</div>
-          )}
         </div>
       </StageCard>
     );
@@ -1370,6 +1355,22 @@ export default function App() {
     );
   }
 
+  async function submitAnswer(raw) {
+    const q = getCurrentQuestion();
+    setState((st) => ({ ...st, current: { ...st.current, answerValue: raw } }));
+    setStage(STAGES.ANSWER);
+    if (q.answerMode !== "text") {
+      const result = await validateAny(q, raw);
+      resolveOwnTurn(result.correct);
+    }
+  }
+
+  function passAnswer() {
+    setState((st) => ({ ...st, current: { ...st.current, answerValue: "" } }));
+    setStage(STAGES.ANSWER);
+    resolveOwnTurn(false, true);
+  }
+
   // ——— Render ———
   return (
     <div
@@ -1381,7 +1382,18 @@ export default function App() {
       {state.stage === STAGES.SETUP && <SetupStage />}
       {state.stage === STAGES.CATEGORY && <CategoryStage />}
       {state.stage === STAGES.READY && <ReadyStage />}
-      {state.stage === STAGES.QUESTION && <QuestionStage />}
+      {state.stage === STAGES.QUESTION && (
+        <QuestionStage
+          q={getCurrentQuestion()}
+          state={state}
+          canUsePostHelpsNow={canUsePostHelpsNow}
+          useFiftyHelp={useFiftyHelp}
+          useHintHelp={useHintHelp}
+          prettyAnswer={prettyAnswer}
+          submitAnswer={submitAnswer}
+          passAnswer={passAnswer}
+        />
+      )}
       {state.stage === STAGES.ANSWER && <AnswerStage />}
       {state.stage === STAGES.STEAL_TURN && <StealTurn />}
       {state.stage === STAGES.FINALE_WAGER && <FinaleWagerStage />}
