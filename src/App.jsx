@@ -771,11 +771,15 @@ export default function App() {
         ? result.correct
         : state.__lastOwnTurnCorrect === true;
 
-    const preAwardPoints = wasCorrect
-      ? finalizePoints(
-          q.points * (state.current.x2ThisTurn ? 2 : 1)
-        )
-      : 0;
+    const preAwardPoints = (() => {
+      if (!wasCorrect) return 0;
+      const usedFiftyOrHint = state.current.fiftyQuickOptions || state.current.hintShown;
+      if (usedFiftyOrHint) {
+        return 1;
+      }
+      const base = q.points * (state.current.x2ThisTurn ? 2 : 1);
+      return finalizePoints(base);
+    })();
 
     const hideTrueAnswer =
       !wasCorrect && state.current.stealOffered && state.current.stealBy == null;
