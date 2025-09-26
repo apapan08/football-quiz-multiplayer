@@ -177,7 +177,9 @@ function SetupStage({ state, setState, setStage }) {
 function QuestionStage({
   q,
   state,
-  canUsePostHelpsNow,
+  activePlayer,
+  canUseFiftyNow,
+  canUseHintNow,
   useFiftyHelp,
   useHintHelp,
   prettyAnswer,
@@ -188,6 +190,9 @@ function QuestionStage({
   const [scoreValue, setScoreValue] = useState({ home: 0, away: 0 });
 
   if (!q) return null;
+
+  const canUseFifty = canUseFiftyNow();
+  const canUseHint = canUseHintNow();
 
   return (
     <StageCard>
@@ -209,13 +214,11 @@ function QuestionStage({
 
       {q.media ? (
         <div className="mt-4">
-          {/* key ensures remount on hint */}
           <Media key={`media-${q.id}-${state.current.mediaRefreshToken || 0}`} media={{ ...q.media, priority: true }} />
         </div>
       ) : null}
 
       <div className="mt-5">
-        {/* CATALOG — type-ahead by default; two quick-picks after 50/50 */}
         {q.answerMode === "catalog" && (
           <>
             <AutoCompleteAnswer
@@ -224,7 +227,6 @@ function QuestionStage({
               onSelect={(item) => submitAnswer(item?.name || "")}
               onChangeText={(t) => setInputValue(t)}
             />
-
             <div className="flex flex-wrap gap-3 justify-center mt-3">
               <button className="btn btn-accent" onClick={() => submitAnswer(inputValue)}>
                 Υποβολή
@@ -234,7 +236,6 @@ function QuestionStage({
           </>
         )}
 
-        {/* SCORELINE */}
         {q.answerMode === "scoreline" && (
           <div className="flex flex-col items-center gap-3">
             <ScoreInput value={scoreValue} onChange={setScoreValue} />
@@ -247,7 +248,6 @@ function QuestionStage({
           </div>
         )}
 
-        {/* NUMERIC */}
         {q.answerMode === "numeric" && (
           <form
             className="flex flex-col items-stretch gap-3"
@@ -268,7 +268,6 @@ function QuestionStage({
           </form>
         )}
 
-        {/* TEXT */}
         {q.answerMode === "text" && (
           <form
             className="flex flex-col items-stretch gap-3"
@@ -290,14 +289,15 @@ function QuestionStage({
         )}
       </div>
 
-      {/* Post-reveal helps (mirrored with header behavior) */}
       <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-sm">
         <button
           className="btn btn-neutral"
           onClick={useFiftyHelp}
-          disabled={!canUsePostHelpsNow() || !(Array.isArray(q.fifty) && q.fifty.length === 2)}
+          disabled={!canUseFifty || !(Array.isArray(q.fifty) && q.fifty.length === 2)}
           title={
-            state.current.x2ThisTurn
+            !activePlayer.hasFifty
+              ? "Boήθεια 50/50 έχει ήδη χρησιμοποιηθεί"
+              : state.current.x2ThisTurn
               ? "Το Χ2 δεν συνδυάζεται"
               : Array.isArray(q.fifty) && q.fifty.length === 2
               ? "Δείξε 2 επιλογές 50/50"
@@ -309,9 +309,11 @@ function QuestionStage({
         <button
           className="btn btn-neutral"
           onClick={useHintHelp}
-          disabled={!canUsePostHelpsNow() || !q.hint}
+          disabled={!canUseHint || !q.hint}
           title={
-            state.current.x2ThisTurn
+            !activePlayer.hasHint
+              ? "Boήθεια Hint έχει ήδη χρησιμοποιηθεί"
+              : state.current.x2ThisTurn
               ? "Το Χ2 δεν συνδυάζεται"
               : q.hint
               ? "Σύντομη βοήθεια"
@@ -347,8 +349,8 @@ export default function App() {
   // Persistent match state
   const [state, setState] = usePersistentState("two_player_quiz_state_v1", {
     stage: STAGES.SETUP,
-    p1: { name: "P1", avatar: AVATAR_P1, score: 0, streak: 0, helpsLeft: 3, usedX2Ids: [] },
-    p2: { name: "P2", avatar: AVATAR_P2, score: 0, streak: 0, helpsLeft: 3, usedX2Ids: [] },
+    p1: { name: "P1", avatar: AVATAR_P1, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
+    p2: { name: "P2", avatar: AVATAR_P2, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
     active: "p1",
     usedQuestionIds: [],
     turnIndex: 0,
@@ -357,15 +359,15 @@ export default function App() {
       selectedQuestionId: null,
       x2ThisTurn: false,
       usedHelpThisQuestion: false,
-      fiftyEnabledIds: [],           // legacy field (kept reset)
-      fiftyQuickOptions: null,       // shows authored q.fifty (2 options) after 50/50
+      fiftyEnabledIds: [],
+      fiftyQuickOptions: null,
       hintShown: false,
-      mediaRefreshToken: 0,          // increments on Hint to remount Media
+      mediaRefreshToken: 0,
       stealOffered: false,
       stealAccepted: false,
       stealBy: null,
       answerValue: null,
-      revealChoices: null,           // kept for backward compatibility
+      revealChoices: null,
     },
     finale: {
       enabled: finals.length > 0,
@@ -393,8 +395,8 @@ export default function App() {
   function resetMatch() {
     setState((_) => ({
       stage: STAGES.SETUP,
-      p1: { name: "P1", avatar: AVATAR_P1, score: 0, streak: 0, helpsLeft: 3, usedX2Ids: [] },
-      p2: { name: "P2", avatar: AVATAR_P2, score: 0, streak: 0, helpsLeft: 3, usedX2Ids: [] },
+      p1: { name: "P1", avatar: AVATAR_P1, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
+      p2: { name: "P2", avatar: AVATAR_P2, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
       active: "p1",
       usedQuestionIds: [],
       turnIndex: 0,
@@ -431,7 +433,19 @@ export default function App() {
 
   const canUseX2Now = () =>
     state.stage === STAGES.READY &&
-    activePlayer.helpsLeft > 0 &&
+    activePlayer.hasX2 &&
+    !state.current.usedHelpThisQuestion;
+
+  const canUseFiftyNow = () =>
+    state.stage === STAGES.QUESTION &&
+    activePlayer.hasFifty &&
+    !state.current.x2ThisTurn &&
+    !state.current.usedHelpThisQuestion;
+
+  const canUseHintNow = () =>
+    state.stage === STAGES.QUESTION &&
+    activePlayer.hasHint &&
+    !state.current.x2ThisTurn &&
     !state.current.usedHelpThisQuestion;
 
   const revealQuestion = (useX2 = false) => {
@@ -446,20 +460,14 @@ export default function App() {
         usedHelpThisQuestion: !!useX2 || st.current.usedHelpThisQuestion,
       },
       [activeKey]: !!useX2
-        ? { ...st[activeKey], helpsLeft: Math.max(0, st[activeKey].helpsLeft - 1) }
+        ? { ...st[activeKey], hasX2: false }
         : st[activeKey],
     }));
   };
 
-  const canUsePostHelpsNow = () =>
-    state.stage === STAGES.QUESTION &&
-    !state.current.x2ThisTurn &&
-    !state.current.usedHelpThisQuestion &&
-    activePlayer.helpsLeft > 0;
-
   const useFiftyHelp = () => {
     const q = getCurrentQuestion();
-    if (!q || !canUsePostHelpsNow()) return;
+    if (!q || !canUseFiftyNow()) return;
     if (!Array.isArray(q.fifty) || q.fifty.length !== 2) return;
     setState((st) => ({
       ...st,
@@ -470,14 +478,14 @@ export default function App() {
       },
       [activeKey]: {
         ...st[activeKey],
-        helpsLeft: Math.max(0, st[activeKey].helpsLeft - 1),
+        hasFifty: false,
       },
     }));
   };
 
   const useHintHelp = () => {
     const q = getCurrentQuestion();
-    if (!q || !canUsePostHelpsNow()) return;
+    if (!q || !canUseHintNow()) return;
     if (!q.hint) return;
     setState((st) => ({
       ...st,
@@ -488,7 +496,7 @@ export default function App() {
       },
       [activeKey]: {
         ...st[activeKey],
-        helpsLeft: Math.max(0, st[activeKey].helpsLeft - 1),
+        hasHint: false,
       },
     }));
   };
@@ -515,12 +523,16 @@ export default function App() {
   }
 
   function HelperDock({ playerKey, align = "left" }) {
+    const player = state[playerKey];
     const isActive = activeKey === playerKey;
     const q = getCurrentQuestion();
-    const x2Enabled = isActive && canUseX2Now();
-    const postHelpsEnabled = isActive && canUsePostHelpsNow();
-    const fiftyEnabled = postHelpsEnabled && Array.isArray(q?.fifty) && q.fifty.length === 2;
-    const hintEnabled = postHelpsEnabled && !!q?.hint;
+
+    const x2Ready = isActive && state.stage === STAGES.READY && !state.current.usedHelpThisQuestion;
+    const postHelpsReady = isActive && state.stage === STAGES.QUESTION && !state.current.x2ThisTurn && !state.current.usedHelpThisQuestion;
+
+    const x2Enabled = x2Ready && player.hasX2;
+    const fiftyEnabled = postHelpsReady && player.hasFifty && Array.isArray(q?.fifty) && q.fifty.length === 2;
+    const hintEnabled = postHelpsReady && player.hasHint && !!q?.hint;
 
     const baseBtn =
       "inline-flex items-center justify-center rounded-full w-9 h-9 text-xs font-extrabold ring-1 ring-white/20 shadow";
@@ -530,30 +542,30 @@ export default function App() {
     return (
       <div className={`flex items-center gap-1.5 ${align === "right" ? "flex-row-reverse" : ""}`}>
         <button
-          className={`${baseBtn} ${x2Enabled ? "" : disabledCls}`}
-          style={enabledStyle}
-          title="Χ2 (μόνο στο READY)"
-          onClick={() => revealQuestion(true)}
+          className={`${baseBtn} ${!player.hasX2 ? disabledCls : ""}`}
+          style={player.hasX2 ? enabledStyle : {}}
+          title="Χ2"
+          onClick={() => x2Enabled && revealQuestion(true)}
           disabled={!x2Enabled}
           aria-label="Χ2"
         >
           ×2
         </button>
         <button
-          className={`${baseBtn} ${fiftyEnabled ? "" : disabledCls}`}
-          style={enabledStyle}
-          title="50/50 (στο QUESTION)"
-          onClick={useFiftyHelp}
+          className={`${baseBtn} ${!player.hasFifty ? disabledCls : ""}`}
+          style={player.hasFifty ? enabledStyle : {}}
+          title="50/50"
+          onClick={() => fiftyEnabled && useFiftyHelp()}
           disabled={!fiftyEnabled}
           aria-label="50/50"
         >
           50
         </button>
         <button
-          className={`${baseBtn} ${hintEnabled ? "" : disabledCls}`}
-          style={enabledStyle}
-          title="Hint (στο QUESTION)"
-          onClick={useHintHelp}
+          className={`${baseBtn} ${!player.hasHint ? disabledCls : ""}`}
+          style={player.hasHint ? enabledStyle : {}}
+          title="Hint"
+          onClick={() => hintEnabled && useHintHelp()}
           disabled={!hintEnabled}
           aria-label="Hint"
         >
@@ -602,7 +614,6 @@ export default function App() {
   function CategoryStage() {
     const selectedPhase = myPhase;
 
-    // Build from ALL non-final questions (no filtering by phase or used)
     const byCategory = useMemo(() => {
       const map = new Map();
       for (const q of nonFinals) {
@@ -751,14 +762,10 @@ export default function App() {
             onClick={() => revealQuestion(true)}
             disabled={!canUseX2}
             aria-label="Χρήση Χ2 και αποκάλυψη"
-            title={canUseX2 ? "Χ2 (πριν την αποκάλυψη)" : "Δεν είναι διαθέσιμο"}
+            title={!activePlayer.hasX2 ? "Boήθεια ×2 έχει ήδη χρησιμοποιηθεί" : canUseX2 ? "Χ2 (πριν την αποκάλυψη)" : "Δεν είναι διαθέσιμο"}
           >
             Χρήση ×2 &amp; Αποκάλυψη
           </button>
-        </div>
-
-        <div className="mt-6 text-slate-300 text-sm">
-          Βοήθειες {activeKey.toUpperCase()}: διαθέσιμες {activePlayer.helpsLeft}. Το Χ2 καταναλώνει 1 βοήθεια και δεν συνδυάζεται με άλλες.
         </div>
       </StageCard>
     );
@@ -1376,7 +1383,9 @@ export default function App() {
         <QuestionStage
           q={getCurrentQuestion()}
           state={state}
-          canUsePostHelpsNow={canUsePostHelpsNow}
+          activePlayer={activePlayer}
+          canUseFiftyNow={canUseFiftyNow}
+          canUseHintNow={canUseHintNow}
           useFiftyHelp={useFiftyHelp}
           useHintHelp={useHintHelp}
           prettyAnswer={prettyAnswer}
