@@ -140,12 +140,13 @@ function SetupStage({ state, setState, setStage }) {
       <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
         {["p1", "p2"].map((k) => (
           <div key={k} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.04)" }}>
-            <div className="text-slate-200 font-semibold mb-2">{k.toUpperCase()}</div>
+            <div className="text-slate-200 font-semibold mb-2">{k === 'p1' ? 'Παίκτης 1' : 'Παίκτης 2'}</div>
             <label className="block text-sm text-slate-300 mb-1">Όνομα</label>
             <input
-              className="w-full rounded-xl bg-slate-900/60 px-4 py-2 text-slate-100 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-pink-400"
+              className="w-full rounded-xl bg-slate-900/60 px-4 py-2 text-slate-100 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-pink-400 placeholder:text-slate-500"
               value={state[k].name}
               onChange={(e) => setState((st) => ({ ...st, [k]: { ...st[k], name: e.target.value } }))}
+              placeholder="Γραψε το ονομα σου.."
             />
           </div>
         ))}
@@ -334,8 +335,8 @@ export default function App() {
   // Persistent match state
   const [state, setState] = usePersistentState("two_player_quiz_state_v1", {
     stage: STAGES.SETUP,
-    p1: { name: "P1", avatar: AVATAR_P1, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
-    p2: { name: "P2", avatar: AVATAR_P2, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
+    p1: { name: "", avatar: AVATAR_P1, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
+    p2: { name: "", avatar: AVATAR_P2, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
     active: "p1",
     usedQuestionIds: [],
     turnIndex: 0,
@@ -372,8 +373,8 @@ export default function App() {
   function resetMatch() {
     setState((_) => ({
       stage: STAGES.SETUP,
-      p1: { name: "P1", avatar: AVATAR_P1, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
-      p2: { name: "P2", avatar: AVATAR_P2, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
+      p1: { name: "", avatar: AVATAR_P1, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
+      p2: { name: "", avatar: AVATAR_P2, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
       active: "p1",
       usedQuestionIds: [],
       turnIndex: 0,
