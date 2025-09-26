@@ -596,14 +596,14 @@ export default function App() {
               <HelperDock playerKey="p1" align="left" />
             </div>
             <Logo />
-            <div className="flex flex-col items-end gap-1 sm:flex-row-reverse sm:items-center sm:gap-2">
+            <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
               <PlayerScore
                 name={state.p2.name}
                 avatar={state.p2.avatar}
                 score={state.p2.score}
                 active={activeKey === "p2"}
               />
-              <HelperDock playerKey="p2" align="right" />
+              <HelperDock playerKey="p2" align="left" />
             </div>
           </div>
         </div>
