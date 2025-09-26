@@ -142,6 +142,38 @@ function StageCard({ children }) {
   );
 }
 
+function SetupStage({ state, setState, setStage }) {
+  return (
+    <StageCard>
+      <div className="flex items-center justify-between">
+        <Logo />
+      </div>
+
+      <h2 className="mt-4 font-display text-2xl font-extrabold text-white">Δύο Παίκτες — Ρυθμίσεις</h2>
+
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {["p1", "p2"].map((k) => (
+          <div key={k} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.04)" }}>
+            <div className="text-slate-200 font-semibold mb-2">{k.toUpperCase()}</div>
+            <label className="block text-sm text-slate-300 mb-1">Όνομα</label>
+            <input
+              className="w-full rounded-xl bg-slate-900/60 px-4 py-2 text-slate-100 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-pink-400"
+              value={state[k].name}
+              onChange={(e) => setState((st) => ({ ...st, [k]: { ...st[k], name: e.target.value } }))}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        <button className="btn btn-accent" onClick={() => setStage(STAGES.CATEGORY)}>
+          Ξεκίνα Αγώνα
+        </button>
+      </div>
+    </StageCard>
+  );
+}
+
 function QuestionStage({
   q,
   state,
@@ -563,43 +595,6 @@ export default function App() {
           </div>
         </div>
       </header>
-    );
-  }
-
-  function SetupStage() {
-    return (
-      <StageCard>
-        <div className="flex items-center justify-between">
-          <Logo />
-        </div>
-
-        <h2 className="mt-4 font-display text-2xl font-extrabold text-white">Δύο Παίκτες — Ρυθμίσεις</h2>
-
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {["p1", "p2"].map((k) => (
-            <div key={k} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.04)" }}>
-              <div className="text-slate-200 font-semibold mb-2">{k.toUpperCase()}</div>
-              <label className="block text-sm text-slate-300 mb-1">Όνομα</label>
-              <input
-                className="w-full rounded-xl bg-slate-900/60 px-4 py-2 text-slate-100 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-pink-400"
-                value={state[k].name}
-                onChange={(e) => setState((st) => ({ ...st, [k]: { ...st[k], name: e.target.value } }))}
-              />
-              <div className="mt-3 flex items-center gap-3">
-                <div className="h-12 w-12 shrink-0 rounded-2xl overflow-hidden ring-2 ring-white/60 shadow">
-                  <img src={state[k].avatar} alt={state[k].name} className="h-full w-full object-cover" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <button className="btn btn-accent" onClick={() => setStage(STAGES.CATEGORY)}>
-            Ξεκίνα Αγώνα
-          </button>
-        </div>
-      </StageCard>
     );
   }
 
@@ -1374,7 +1369,7 @@ export default function App() {
     >
       <ScoreHeader />
 
-      {state.stage === STAGES.SETUP && <SetupStage />}
+      {state.stage === STAGES.SETUP && <SetupStage state={state} setState={setState} setStage={setStage} />}
       {state.stage === STAGES.CATEGORY && <CategoryStage />}
       {state.stage === STAGES.READY && <ReadyStage />}
       {state.stage === STAGES.QUESTION && (
