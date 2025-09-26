@@ -586,17 +586,17 @@ export default function App() {
       >
         <div className="mx-auto max-w-3xl px-3 py-3">
           <div className="flex items-center justify-between gap-3 text-white">
-            <div className="flex items-center gap-2">
-              <HelperDock playerKey="p1" align="left" />
+            <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
               <PlayerScore
                 name={state.p1.name}
                 avatar={state.p1.avatar}
                 score={state.p1.score}
                 active={activeKey === "p1"}
               />
+              <HelperDock playerKey="p1" align="left" />
             </div>
             <Logo />
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-end gap-1 sm:flex-row-reverse sm:items-center sm:gap-2">
               <PlayerScore
                 name={state.p2.name}
                 avatar={state.p2.avatar}
