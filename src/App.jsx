@@ -1078,7 +1078,12 @@ export default function App() {
     let delta = 0;
 
     if (correct) {
-      delta = finalizePoints(base);
+      const usedFiftyOrHint = state.current.fiftyQuickOptions || state.current.hintShown;
+      if (usedFiftyOrHint) {
+        delta = 1;
+      } else {
+        delta = finalizePoints(base);
+      }
     } else {
       delta = 0;
     }

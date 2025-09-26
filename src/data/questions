@@ -24,7 +24,6 @@ export const questions = [
     accept: ["Nigeria", "Νιγηρία"],
     answer: "Νιγηρία",
     hint: "Αφρικανική χώρα της Δυτικής Αφρικής.",
-    fact: "Ο Saka έχει καταγωγή από τη Νιγηρία.",
     // catalog → two strings; include correct
     fifty: ["Νιγηρία", "Γκάνα"],
   },
@@ -133,7 +132,7 @@ export const questions = [
     order: 7,
     category: "Champions League",
     points: 2,
-    phase: "C",
+    phase: "A",
     lang: "el",
     prompt:
       "Ποιας ομάδας, που αγωνίζεται φέτος στη League Phase του Champions League, το στάδιο βρίσκεται βορειότερα;",
