@@ -289,6 +289,7 @@ function QuestionStage({
         )}
       </div>
 
+      {/* Post-reveal helps (mirrored with header behavior) */}
       <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-sm">
         <button
           className="btn btn-neutral"
@@ -304,7 +305,7 @@ function QuestionStage({
               : "Δεν υπάρχει διαθέσιμο 50/50 γι’ αυτή την ερώτηση"
           }
         >
-          50/50
+          {activePlayer.hasFifty ? "50/50" : "50/50 Used"}
         </button>
         <button
           className="btn btn-neutral"
@@ -320,7 +321,7 @@ function QuestionStage({
               : "Δεν υπάρχει hint"
           }
         >
-          Hint
+          {activePlayer.hasHint ? "Hint" : "Hint Used"}
         </button>
         {Array.isArray(state.current.fiftyQuickOptions) && state.current.fiftyQuickOptions.length === 2 && (
           <div className="text-slate-200 italic text-center">50/50: {state.current.fiftyQuickOptions.map(opt => prettyAnswer(q, opt)).join('  ή  ')}</div>
@@ -764,7 +765,7 @@ export default function App() {
             aria-label="Χρήση Χ2 και αποκάλυψη"
             title={!activePlayer.hasX2 ? "Boήθεια ×2 έχει ήδη χρησιμοποιηθεί" : canUseX2 ? "Χ2 (πριν την αποκάλυψη)" : "Δεν είναι διαθέσιμο"}
           >
-            Χρήση ×2 &amp; Αποκάλυψη
+            {activePlayer.hasX2 ? "Χρήση ×2 & Αποκάλυψη" : "×2 Used"}
           </button>
         </div>
       </StageCard>
