@@ -20,6 +20,10 @@ const THEME = {
   negativeGrad: "linear-gradient(90deg,#F43F5E,#EF4444)",
 };
 
+const AVATAR_P1 = '/Player1Avatar.png';
+const AVATAR_P2 = '/Player2Avatar.png';
+
+
 // Fonts + CSS vars once (Tailwind utility classes live in index.css)
 function useBrandCSS() {
   useEffect(() => {
@@ -311,8 +315,8 @@ export default function App() {
   // Persistent match state
   const [state, setState] = usePersistentState("two_player_quiz_state_v1", {
     stage: STAGES.SETUP,
-    p1: { name: "P1", avatar: "", score: 0, streak: 0, helpsLeft: 3, usedX2Ids: [] },
-    p2: { name: "P2", avatar: "", score: 0, streak: 0, helpsLeft: 3, usedX2Ids: [] },
+    p1: { name: "P1", avatar: AVATAR_P1, score: 0, streak: 0, helpsLeft: 3, usedX2Ids: [] },
+    p2: { name: "P2", avatar: AVATAR_P2, score: 0, streak: 0, helpsLeft: 3, usedX2Ids: [] },
     active: "p1",
     usedQuestionIds: [],
     turnIndex: 0,
@@ -357,8 +361,8 @@ export default function App() {
   function resetMatch() {
     setState((_) => ({
       stage: STAGES.SETUP,
-      p1: { name: "P1", avatar: "", score: 0, streak: 0, helpsLeft: 3, usedX2Ids: [] },
-      p2: { name: "P2", avatar: "", score: 0, streak: 0, helpsLeft: 3, usedX2Ids: [] },
+      p1: { name: "P1", avatar: AVATAR_P1, score: 0, streak: 0, helpsLeft: 3, usedX2Ids: [] },
+      p2: { name: "P2", avatar: AVATAR_P2, score: 0, streak: 0, helpsLeft: 3, usedX2Ids: [] },
       active: "p1",
       usedQuestionIds: [],
       turnIndex: 0,
@@ -567,7 +571,6 @@ export default function App() {
       <StageCard>
         <div className="flex items-center justify-between">
           <Logo />
-          <button className="btn btn-neutral" onClick={resetMatch}>Επαναφορά</button>
         </div>
 
         <h2 className="mt-4 font-display text-2xl font-extrabold text-white">Δύο Παίκτες — Ρυθμίσεις</h2>
@@ -582,14 +585,11 @@ export default function App() {
                 value={state[k].name}
                 onChange={(e) => setState((st) => ({ ...st, [k]: { ...st[k], name: e.target.value } }))}
               />
-              <label className="block text-sm text-slate-300 mt-3 mb-1">Avatar URL (προαιρετικό)</label>
-              <input
-                className="w-full rounded-xl bg-slate-900/60 px-4 py-2 text-slate-100 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-pink-400"
-                value={state[k].avatar}
-                onChange={(e) => setState((st) => ({ ...st, [k]: { ...st[k], avatar: e.target.value } }))}
-                placeholder="https://…"
-              />
-              <div className="mt-3 text-xs text-slate-400">Βοήθειες διαθέσιμες: 3</div>
+              <div className="mt-3 flex items-center gap-3">
+                <div className="h-12 w-12 shrink-0 rounded-2xl overflow-hidden ring-2 ring-white/60 shadow">
+                  <img src={state[k].avatar} alt={state[k].name} className="h-full w-full object-cover" />
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -598,11 +598,6 @@ export default function App() {
           <button className="btn btn-accent" onClick={() => setStage(STAGES.CATEGORY)}>
             Ξεκίνα Αγώνα
           </button>
-        </div>
-
-        <div className="mt-6 text-slate-300 text-sm">
-          Οι κατηγορίες και ο αριθμός ερωτήσεων προκύπτουν από το <code>questions.js</code>. 
-          Η δυσκολία ξεκλειδώνει τμηματικά: <strong>Α</strong> → <strong>Β</strong> → <strong>Γ</strong>.
         </div>
       </StageCard>
     );
