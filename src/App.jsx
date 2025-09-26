@@ -79,8 +79,6 @@ const STAGES = {
   ANSWER: "answer",
   STEAL_PROMPT: "steal_prompt",
   STEAL_TURN: "steal_turn",
-  FINALE_WAGER: "finale_wager",
-  FINALE_PLAY: "finale_play",
   RESULTS: "results",
 };
 
@@ -102,14 +100,6 @@ const Logo = React.memo(() => (
 function clamp(n, a, b) {
   return Math.min(b, Math.max(a, n));
 }
-function ceilHalf(n) {
-  return Math.ceil(n / 2);
-}
-function splitQuestions(arr) {
-  const finals = arr.filter((q) => q.isFinal);
-  const nonFinals = arr.filter((q) => !q.isFinal);
-  return { finals, nonFinals };
-}
 
 // Phases are unlocked strictly from questions.js:
 // While any A remains → only A playable; else while any B remains → only B; else C.
@@ -120,11 +110,7 @@ function currentUnlockedPhase(allNonFinals, usedIds) {
   if (remainBy("B")) return "B";
   return "C";
 }
-function streakMultiplier(streakCount) {
-  if (streakCount >= 5) return 1.5;
-  if (streakCount >= 3) return 1.25;
-  return 1.0;
-}
+
 function finalizePoints(p) {
   return Math.max(0, Math.round(p));
 }
@@ -339,11 +325,9 @@ function QuestionStage({
 export default function App() {
   useBrandCSS();
 
-  const { finals, nonFinals } = useMemo(
+  const nonFinals = useMemo(
     () =>
-      splitQuestions(
-        RAW_QUESTIONS.slice().sort((a, b) => (a.order || 0) - (b.order || 0))
-      ),
+      RAW_QUESTIONS.slice().sort((a, b) => (a.order || 0) - (b.order || 0)),
     []
   );
 
@@ -369,14 +353,6 @@ export default function App() {
       stealBy: null,
       answerValue: null,
       revealChoices: null,
-    },
-    finale: {
-      enabled: finals.length > 0,
-      wagerP1: 0,
-      wagerP2: 0,
-      phase: "pick",
-      currentPlayer: "p1",
-      done: false,
     },
     __lastOwnTurnCorrect: null,
   });
@@ -415,14 +391,6 @@ export default function App() {
         stealBy: null,
         answerValue: null,
         revealChoices: null,
-      },
-      finale: {
-        enabled: finals.length > 0,
-        wagerP1: 0,
-        wagerP2: 0,
-        phase: "pick",
-        currentPlayer: "p1",
-        done: false,
       },
       __lastOwnTurnCorrect: null,
     }));
@@ -669,7 +637,7 @@ export default function App() {
 
         <div className="mt-4 flex flex-col gap-3">
           {byCategory.length === 0 && (
-            <div className="text-slate-300">Δεν υπάρχουν διαθέσιμες ερωτήσεις. Προχώρα στο τελικό.</div>
+            <div className="text-slate-300">Δεν υπάρχουν διαθέσιμες ερωτήσεις.</div>
           )}
           {byCategory.map(([cat, arr]) => (
             <div key={cat} className="flex items-center justify-between gap-3">
@@ -805,9 +773,7 @@ export default function App() {
 
     const preAwardPoints = wasCorrect
       ? finalizePoints(
-          q.points *
-            (state.current.x2ThisTurn ? 2 : 1) *
-            streakMultiplier(state[state.active].streak + 1)
+          q.points * (state.current.x2ThisTurn ? 2 : 1)
         )
       : 0;
 
@@ -888,14 +854,11 @@ export default function App() {
   }
 
   function StealPrompt() {
-    const q = RAW_QUESTIONS.find((x) => x.id === state.current.selectedQuestionId);
-    const halfPts = ceilHalf(q.points);
-
     return (
       <div className="mt-6">
         <div className="rounded-2xl p-4 text-white" style={{ background: "rgba(255,255,255,0.06)" }}>
           <div className="font-semibold mb-2">
-            {state[otherKey].name}: Κλέβεις για {halfPts} πόντους; (χωρίς βοήθειες)
+            {state[otherKey].name}: Κλέβεις για 1 πόντο; (χωρίς βοήθειες)
           </div>
           <div className="flex flex-wrap gap-3 justify-center">
             <button
@@ -937,7 +900,6 @@ export default function App() {
       setSubmitted(true);
     }
 
-    const halfPts = ceilHalf(q.points);
     const userAnswerStr =
       submitted && userAnswer !== null ? prettyAnswer(q, userAnswer) : "";
 
@@ -946,7 +908,7 @@ export default function App() {
         <div className="flex items-center justify-between">
           <Logo />
           <div className="rounded-full bg-slate-700/70 px-3 py-1 text-xs font-semibold text-white">
-            Κλέψιμο — {halfPts} πόντοι
+            Κλέψιμο — 1 πόντος
           </div>
         </div>
 
@@ -1026,7 +988,7 @@ export default function App() {
                   }}
                   aria-label={result?.correct ? "Σωστό" : "Λάθος"}
                 >
-                  {result?.correct ? `✓ +${halfPts}` : "✗ 0"}
+                  {result?.correct ? "✓ +1" : "✗ -1"}
                 </span>
               </div>
             </div>
@@ -1043,143 +1005,6 @@ export default function App() {
             </div>
           </div>
         )}
-      </StageCard>
-    );
-  }
-
-  function FinaleWagerStage() {
-    if (!state.finale.enabled) return <ResultsStage />;
-    const finQ = finals[0];
-
-    function maxWager(score) {
-      return Math.floor(score * 0.5);
-    }
-
-    const [w1, w2] = [state.finale.wagerP1, state.finale.wagerP2];
-
-    return (
-      <StageCard>
-        <div className="flex items-center justify-between">
-          <Logo />
-          <div className="rounded-full bg-slate-700/70 px-3 py-1 text-xs font-semibold text-white">Τελικός</div>
-        </div>
-
-        <h3 className="mt-4 font-display text-2xl font-bold text-white">Ποντάρισμα (0–50% του σκορ)</h3>
-
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <WagerBox
-            label={state.p1.name}
-            value={w1}
-            onChange={(n) =>
-              setState((st) => ({
-                ...st,
-                finale: { ...st.finale, wagerP1: clamp(n, 0, maxWager(st.p1.score)) },
-              }))
-            }
-            max={maxWager(state.p1.score)}
-          />
-          <WagerBox
-            label={state.p2.name}
-            value={w2}
-            onChange={(n) =>
-              setState((st) => ({
-                ...st,
-                finale: { ...st.finale, wagerP2: clamp(n, 0, maxWager(st.p2.score)) },
-              }))
-            }
-            max={maxWager(state.p2.score)}
-          />
-        </div>
-
-        <div className="mt-5 flex justify-center gap-3">
-          <button
-            className="btn btn-accent"
-            onClick={() =>
-              setState((st) => ({
-                ...st,
-                stage: STAGES.FINALE_PLAY,
-                finale: { ...st.finale, phase: "play", currentPlayer: "p1" },
-              }))
-            }
-          >
-            Συνέχεια στον Τελικό
-          </button>
-        </div>
-
-        <div className="mt-5 text-slate-300 text-sm">
-          Ερώτηση τελικού: <em>{finQ?.prompt}</em>
-        </div>
-      </StageCard>
-    );
-  }
-
-  function FinalePlayStage() {
-    const finQ = finals[0];
-    const who = state.finale.currentPlayer;
-    const [value, setValue] = useState("");
-    const [scoreValue, setScoreValue] = useState({ home: 0, away: 0 });
-
-    async function submitFinal() {
-      const res = await validateAny(finQ, finQ.answerMode === "scoreline" ? scoreValue : value);
-      const wager = who === "p1" ? state.finale.wagerP1 : state.finale.wagerP2;
-      const correct = !!res.correct;
-      setState((st) => {
-        const next = { ...st };
-        const delta = correct ? wager : -wager;
-        next[who] = { ...next[who], score: finalizePoints(next[who].score + delta) };
-        if (who === "p1") {
-          next.finale.currentPlayer = "p2";
-        } else {
-          next.finale.done = true;
-          next.stage = STAGES.RESULTS;
-        }
-        return next;
-      });
-    }
-
-    return (
-      <StageCard>
-        <div className="flex items-center justify-between">
-          <Logo />
-          <div className="rounded-full bg-slate-700/70 px-3 py-1 text-xs font-semibold text-white">Τελικός</div>
-        </div>
-
-        <h3 className="mt-4 font-display text-2xl font-bold text-white">{state[who].name}</h3>
-        <div className="mt-2 text-slate-300 text-sm">Απάντησε στην τελική ερώτηση.</div>
-
-        {finQ.media ? (
-          <div className="mt-4">
-            <Media media={{ ...finQ.media, priority: true }} />
-          </div>
-        ) : null}
-
-        {finQ.answerMode === "scoreline" && (
-          <div className="mt-3">
-            <ScoreInput value={scoreValue} onChange={setScoreValue} />
-          </div>
-        )}
-        {(finQ.answerMode === "numeric" || finQ.answerMode === "text") && (
-          <input
-            className="mt-4 w-full rounded-xl bg-slate-900/60 px-4 py-3 text-slate-100 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-pink-400"
-            placeholder="Απάντηση…"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          />
-        )}
-        {finQ.answerMode === "catalog" && (
-          <AutoCompleteAnswer
-            catalog={finQ.catalog}
-            placeholder="Άρχισε να πληκτρολογείς…"
-            onSelect={(item) => setValue(item?.name || "")}
-            onChangeText={(t) => setValue(t)}
-          />
-        )}
-
-        <div className="mt-4 flex justify-center">
-          <button className="btn btn-accent" onClick={submitFinal}>
-            Υποβολή
-          </button>
-        </div>
       </StageCard>
     );
   }
@@ -1253,8 +1078,7 @@ export default function App() {
     let delta = 0;
 
     if (correct) {
-      const mult = streakMultiplier(state[activeKey].streak + 1);
-      delta = finalizePoints(base * mult);
+      delta = finalizePoints(base);
     } else {
       delta = 0;
     }
@@ -1278,14 +1102,14 @@ export default function App() {
   }
 
   function applyStealResolution(correct) {
-    const q = RAW_QUESTIONS.find((x) => x.id === state.current.selectedQuestionId);
-    const stealPts = ceilHalf(q.points);
+    const stealPts = correct ? 1 : -1;
     setState((st) => {
       const next = { ...st };
-      if (correct) {
-        next[state.current.stealBy] = {
-          ...next[state.current.stealBy],
-          score: finalizePoints(next[state.current.stealBy].score + stealPts),
+      const stealerKey = st.current.stealBy;
+      if (stealerKey) {
+        next[stealerKey] = {
+          ...next[stealerKey],
+          score: finalizePoints(next[stealerKey].score + stealPts),
         };
       }
       finishTurnAdvance(next);
@@ -1327,30 +1151,13 @@ export default function App() {
       // Advance stage/phase based on remaining questions
       const anyLeft = nonFinals.some((q) => !st.usedQuestionIds.includes(q.id));
       if (!anyLeft) {
-        if (st.finale.enabled) st.stage = STAGES.FINALE_WAGER;
-        else st.stage = STAGES.RESULTS;
+        st.stage = STAGES.RESULTS;
       } else {
         st.active = nextActive;
         st.stage = STAGES.CATEGORY;
       }
       return st;
     });
-  }
-
-  function WagerBox({ label, value, onChange, max }) {
-    return (
-      <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.06)" }}>
-        <div className="text-slate-200 font-semibold mb-2">{label}</div>
-        <div className="flex items-center gap-2">
-          <button className="btn btn-neutral" onClick={() => onChange(value - 1)} aria-label="Μείωση">−</button>
-          <div className="pill text-white" style={{ background: THEME.badgeGradient, minWidth: 72, textAlign: "center" }}>
-            {value}
-          </div>
-          <button className="btn btn-neutral" onClick={() => onChange(value + 1)} aria-label="Αύξηση">+</button>
-        </div>
-        <div className="mt-2 text-xs text-slate-400">Μέγιστο: {max}</div>
-      </div>
-    );
   }
 
   async function submitAnswer(raw) {
@@ -1396,8 +1203,6 @@ export default function App() {
       )}
       {state.stage === STAGES.ANSWER && <AnswerStage />}
       {state.stage === STAGES.STEAL_TURN && <StealTurn />}
-      {state.stage === STAGES.FINALE_WAGER && <FinaleWagerStage />}
-      {state.stage === STAGES.FINALE_PLAY && <FinalePlayStage />}
       {state.stage === STAGES.RESULTS && <ResultsStage />}
 
       <div className="pb-16" />
