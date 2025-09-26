@@ -626,22 +626,7 @@ export default function App() {
     const [inputValue, setInputValue] = useState("");
     const [scoreValue, setScoreValue] = useState({ home: 0, away: 0 });
 
-    // On question change, clear any residual 50/50 / legacy fields safely
-    useEffect(() => {
-      if (!q) return;
-      setState((st) => {
-        const needReset =
-          st.current.fiftyQuickOptions != null ||
-          (st.current.fiftyEnabledIds && st.current.fiftyEnabledIds.length > 0) ||
-          st.current.revealChoices != null;
-        if (!needReset) return st;
-        return {
-          ...st,
-          current: { ...st.current, fiftyQuickOptions: null, fiftyEnabledIds: [], revealChoices: null },
-        };
-      });
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [q?.id]);
+    
 
     const canUsePostHelps = canUsePostHelpsNow();
 
@@ -698,21 +683,6 @@ export default function App() {
                 onChangeText={(t) => setInputValue(t)}
               />
 
-              {Array.isArray(state.current.fiftyQuickOptions) &&
-                state.current.fiftyQuickOptions.length === 2 && (
-                  <div className="flex flex-wrap gap-2 justify-center mt-3">
-                    {state.current.fiftyQuickOptions.map((opt, i) => (
-                      <button
-                        key={`ff-cat-${i}-${opt}`}
-                        className="btn btn-neutral"
-                        onClick={() => submitAnswer(opt)}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
               <div className="flex flex-wrap gap-3 justify-center mt-3">
                 <button className="btn btn-accent" onClick={() => submitAnswer(inputValue)}>
                   Υποβολή
@@ -726,19 +696,6 @@ export default function App() {
           {q.answerMode === "scoreline" && (
             <div className="flex flex-col items-center gap-3">
               <ScoreInput value={scoreValue} onChange={setScoreValue} />
-              {Array.isArray(state.current.fiftyQuickOptions) && state.current.fiftyQuickOptions.length === 2 && (
-                <div className="flex flex-wrap gap-2">
-                  {state.current.fiftyQuickOptions.map((opt, i) => (
-                    <button
-                      key={`ff-${i}-${opt?.home}-${opt?.away}`}
-                      className="btn btn-neutral"
-                      onClick={() => submitAnswer(opt)}
-                    >
-                      {(q?.teams?.home ?? "Home")} – {(q?.teams?.away ?? "Away")} {opt.home}–{opt.away}
-                    </button>
-                  ))}
-                </div>
-              )}
               <div className="flex flex-wrap gap-3 justify-center">
                 <button className="btn btn-accent" onClick={() => submitAnswer(scoreValue)}>
                   Υποβολή σκορ
@@ -754,20 +711,6 @@ export default function App() {
               className="flex flex-col items-stretch gap-3"
               onSubmit={(e) => { e.preventDefault(); submitAnswer(Number(inputValue)); }}
             >
-              {Array.isArray(state.current.fiftyQuickOptions) &&
-                state.current.fiftyQuickOptions.length === 2 && (
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {state.current.fiftyQuickOptions.map((n, i) => (
-                      <button
-                        key={`ffn-${i}-${n}`}
-                        className="btn btn-neutral"
-                        onClick={(e) => { e.preventDefault(); submitAnswer(Number(n)); }}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
-                )}
               <input
                 type="number"
                 inputMode="numeric"
@@ -789,20 +732,6 @@ export default function App() {
               className="flex flex-col items-stretch gap-3"
               onSubmit={(e) => { e.preventDefault(); submitAnswer(inputValue); }}
             >
-              {Array.isArray(state.current.fiftyQuickOptions) &&
-                state.current.fiftyQuickOptions.length === 2 && (
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {state.current.fiftyQuickOptions.map((t, i) => (
-                      <button
-                        key={`fft-${i}-${t}`}
-                        className="btn btn-neutral"
-                        onClick={(e) => { e.preventDefault(); submitAnswer(t); }}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                )}
               <input
                 className="w-full rounded-xl bg-slate-900/60 px-4 py-3 text-slate-100 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-pink-400"
                 placeholder="Γράψε την απάντησή σου…"
@@ -849,6 +778,9 @@ export default function App() {
           >
             Hint
           </button>
+          {Array.isArray(state.current.fiftyQuickOptions) && state.current.fiftyQuickOptions.length === 2 && (
+            <div className="text-slate-200 italic text-center">50/50: {state.current.fiftyQuickOptions.map(opt => prettyAnswer(q, opt)).join('  ή  ')}</div>
+          )}
           {state.current.hintShown && q.hint && (
             <div className="text-slate-200 italic text-center">{q.hint}</div>
           )}
