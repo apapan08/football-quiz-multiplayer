@@ -128,6 +128,32 @@ function StageCard({ children }) {
   );
 }
 
+function ConfirmDialog({ isOpen, onClose, onConfirm, title, description }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div
+        className="w-[min(92vw,400px)] rounded-2xl bg-slate-800 ring-1 ring-white/10 p-4 shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
+        <div className="text-lg text-slate-100 font-bold mb-2">{title}</div>
+        <div className="text-sm text-slate-300 mb-4">{description}</div>
+        <div className="flex justify-end gap-3">
+          <button className="btn btn-neutral" onClick={onClose}>
+            Άκυρο
+          </button>
+          <button className="btn btn-accent" onClick={onConfirm}>
+            Επιβεβαίωση
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SetupStage({ state, setState, setStage }) {
   return (
     <StageCard>
@@ -172,6 +198,7 @@ function QuestionStage({
   prettyAnswer,
   submitAnswer,
   passAnswer,
+  askForConfirmation,
 }) {
   const [inputValue, setInputValue] = useState("");
   const [scoreValue, setScoreValue] = useState({ home: 0, away: 0 });
@@ -293,7 +320,7 @@ function QuestionStage({
       <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-sm">
         <button
           className="btn btn-neutral"
-          onClick={useFiftyHelp}
+          onClick={() => askForConfirmation("Ενεργοποίηση 50/50;", "Θα εμφανιστούν δύο πιθανές απαντήσεις. Μια σωστή απάντηση με αυτή τη βοήθεια θα σου δώσει μόνο 1 πόντο. Είσαι σίγουρος;", useFiftyHelp)}
           disabled={!canUseFifty || !(Array.isArray(q.fifty) && q.fifty.length === 2)}
           title={
             !activePlayer.hasFifty
@@ -309,7 +336,7 @@ function QuestionStage({
         </button>
         <button
           className="btn btn-neutral"
-          onClick={useHintHelp}
+          onClick={() => askForConfirmation("Χρήση Βοήθειας (Hint);", "Θα εμφανιστεί μια μικρή βοήθεια. Μια σωστή απάντηση με αυτή τη βοήθεια θα σου δώσει μόνο 1 πόντο. Είσαι σίγουρος;", useHintHelp)}
           disabled={!canUseHint || !q.hint}
           title={
             !activePlayer.hasHint
@@ -338,6 +365,24 @@ function QuestionStage({
 // ——— Main App ———
 export default function App() {
   useBrandCSS();
+
+  const [confirmState, setConfirmState] = useState({ isOpen: false, title: '', description: '', onConfirm: () => {} });
+
+  const askForConfirmation = (title, description, onConfirm) => {
+      setConfirmState({
+      isOpen: true,
+      title,
+      description,
+      onConfirm: () => {
+          onConfirm();
+          setConfirmState({ isOpen: false, title: '', description: '', onConfirm: () => {} });
+      },
+      });
+  };
+
+  const closeConfirmation = () => {
+      setConfirmState({ isOpen: false, title: '', description: '', onConfirm: () => {} });
+  };
 
   const nonFinals = useMemo(
     () =>
@@ -505,7 +550,7 @@ export default function App() {
     );
   }
 
-  function HelperDock({ playerKey, align = "left" }) {
+  function HelperDock({ playerKey, align = "left", askForConfirmation }) {
     const player = state[playerKey];
     const isActive = activeKey === playerKey;
     const q = getCurrentQuestion();
@@ -528,7 +573,7 @@ export default function App() {
           className={`${baseBtn} ${!player.hasX2 ? disabledCls : ""}`}
           style={player.hasX2 ? enabledStyle : {}}
           title="Χ2"
-          onClick={() => x2Enabled && revealQuestion(true)}
+          onClick={() => x2Enabled && askForConfirmation("Ενεργοποίηση Χ2;", "Οι πόντοι της ερώτησης θα διπλασιαστούν, αλλά δεν θα μπορείς να χρησιμοποιήσεις άλλη βοήθεια. Είσαι σίγουρος;", () => revealQuestion(true))}
           disabled={!x2Enabled}
           aria-label="Χ2"
         >
@@ -538,7 +583,7 @@ export default function App() {
           className={`${baseBtn} ${!player.hasFifty ? disabledCls : ""}`}
           style={player.hasFifty ? enabledStyle : {}}
           title="50/50"
-          onClick={() => fiftyEnabled && useFiftyHelp()}
+          onClick={() => fiftyEnabled && askForConfirmation("Ενεργοποίηση 50/50;", "Θα εμφανιστούν δύο πιθανές απαντήσεις. Μια σωστή απάντηση με αυτή τη βοήθεια θα σου δώσει μόνο 1 πόντο. Είσαι σίγουρος;", useFiftyHelp)}
           disabled={!fiftyEnabled}
           aria-label="50/50"
         >
@@ -548,7 +593,7 @@ export default function App() {
           className={`${baseBtn} ${!player.hasHint ? disabledCls : ""}`}
           style={player.hasHint ? enabledStyle : {}}
           title="Hint"
-          onClick={() => hintEnabled && useHintHelp()}
+          onClick={() => hintEnabled && askForConfirmation("Χρήση Βοήθειας (Hint);", "Θα εμφανιστεί μια μικρή βοήθεια. Μια σωστή απάντηση με αυτή τη βοήθεια θα σου δώσει μόνο 1 πόντο. Είσαι σίγουρος;", useHintHelp)}
           disabled={!hintEnabled}
           aria-label="Hint"
         >
@@ -558,7 +603,7 @@ export default function App() {
     );
   }
 
-  function ScoreHeader() {
+  function ScoreHeader({ askForConfirmation }) {
     return (
       <header
         className="sticky top-0 z-20 w-full"
@@ -575,7 +620,7 @@ export default function App() {
                 score={state.p1.score}
                 active={activeKey === "p1"}
               />
-              <HelperDock playerKey="p1" align="left" />
+              <HelperDock playerKey="p1" align="left" askForConfirmation={askForConfirmation} />
             </div>
             <Logo />
             <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
@@ -585,7 +630,7 @@ export default function App() {
                 score={state.p2.score}
                 active={activeKey === "p2"}
               />
-              <HelperDock playerKey="p2" align="left" />
+              <HelperDock playerKey="p2" align="left" askForConfirmation={askForConfirmation} />
             </div>
           </div>
         </div>
@@ -717,7 +762,7 @@ export default function App() {
     );
   }
 
-  function ReadyStage() {
+  function ReadyStage({ askForConfirmation }) {
     const q = useMemo(
       () => RAW_QUESTIONS.find((x) => x.id === state.current.selectedQuestionId),
       [state.current.selectedQuestionId]
@@ -742,7 +787,7 @@ export default function App() {
           </button>
           <button
             className="btn btn-neutral"
-            onClick={() => revealQuestion(true)}
+            onClick={() => askForConfirmation("Ενεργοποίηση Χ2;", "Οι πόντοι της ερώτησης θα διπλασιαστούν, αλλά δεν θα μπορείς να χρησιμοποιήσεις άλλη βοήθεια. Είσαι σίγουρος;", () => revealQuestion(true))}
             disabled={!canUseX2}
             aria-label="Χρήση Χ2 και αποκάλυψη"
             title={!activePlayer.hasX2 ? "Boήθεια ×2 έχει ήδη χρησιμοποιηθεί" : canUseX2 ? "Χ2 (πριν την αποκάλυψη)" : "Δεν είναι διαθέσιμο"}
@@ -754,7 +799,7 @@ export default function App() {
     );
   }
 
-  function AnswerStage() {
+  function AnswerStage({ askForConfirmation }) {
     const q = RAW_QUESTIONS.find((x) => x.id === state.current.selectedQuestionId);
     if (!q) return null;
 
@@ -845,7 +890,7 @@ export default function App() {
           )}
         </div>
 
-        {state.current.stealOffered && state.current.stealBy == null && <StealPrompt />}
+        {state.current.stealOffered && state.current.stealBy == null && <StealPrompt askForConfirmation={askForConfirmation} />}
 
         {!state.current.stealOffered && (
           <div className="mt-5 flex flex-wrap justify-center gap-3">
@@ -871,7 +916,7 @@ export default function App() {
     );
   }
 
-  function StealPrompt() {
+  function StealPrompt({ askForConfirmation }) {
     return (
       <div className="mt-6">
         <div className="rounded-2xl p-4 text-white" style={{ background: "rgba(255,255,255,0.06)" }}>
@@ -881,13 +926,7 @@ export default function App() {
           <div className="flex flex-wrap gap-3 justify-center">
             <button
               className="btn btn-accent"
-              onClick={() =>
-                setState((st) => ({
-                  ...st,
-                  stage: STAGES.STEAL_TURN,
-                  current: { ...st.current, stealAccepted: true, stealBy: otherKey },
-                }))
-              }
+              onClick={() => askForConfirmation("Απόπειρα για Κλέψιμο;", "Μια σωστή απάντηση δίνει 1 πόντο, αλλά μια λάθος απάντηση αφαιρεί 1 πόντο. Είσαι σίγουρος;", () => setState((st) => ({ ...st, stage: STAGES.STEAL_TURN, current: { ...st.current, stealAccepted: true, stealBy: otherKey } })))}
             >
               Κλέψε
             </button>
@@ -1218,11 +1257,18 @@ export default function App() {
       className="min-h-screen text-white"
       style={{ background: `linear-gradient(135deg, var(--brand-grad-from), var(--brand-grad-to))` }}
     >
-      <ScoreHeader />
+      <ConfirmDialog 
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirmation}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        description={confirmState.description}
+      />
+      <ScoreHeader askForConfirmation={askForConfirmation} />
 
       {state.stage === STAGES.SETUP && <SetupStage state={state} setState={setState} setStage={setStage} />}
       {state.stage === STAGES.CATEGORY && <CategoryStage />}
-      {state.stage === STAGES.READY && <ReadyStage />}
+      {state.stage === STAGES.READY && <ReadyStage askForConfirmation={askForConfirmation} />}
       {state.stage === STAGES.QUESTION && (
         <QuestionStage
           q={getCurrentQuestion()}
@@ -1235,9 +1281,10 @@ export default function App() {
           prettyAnswer={prettyAnswer}
           submitAnswer={submitAnswer}
           passAnswer={passAnswer}
+          askForConfirmation={askForConfirmation}
         />
       )}
-      {state.stage === STAGES.ANSWER && <AnswerStage />}
+      {state.stage === STAGES.ANSWER && <AnswerStage askForConfirmation={askForConfirmation} />}
       {state.stage === STAGES.STEAL_TURN && <StealTurn />}
       {state.stage === STAGES.RESULTS && <ResultsStage />}
 
