@@ -391,7 +391,7 @@ export default function App() {
   );
 
   // Persistent match state
-  const [state, setState] = usePersistentState("two_player_quiz_state_v1", {
+  const [state, setState] = usePersistentState("two_player_quiz_state_v2", {
     stage: STAGES.SETUP,
     p1: { name: "", avatar: AVATAR_P1, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
     p2: { name: "", avatar: AVATAR_P2, score: 0, streak: 0, hasX2: true, hasFifty: true, hasHint: true, usedX2Ids: [] },
