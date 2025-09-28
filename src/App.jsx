@@ -206,6 +206,19 @@ function QuestionStage({
       ) : null}
 
       <div className="mt-5">
+        {q.answerMode === "MultipleChoice" && (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {q.choices?.map((choice) => (
+              <button
+                key={choice}
+                className="btn btn-neutral w-full text-center"
+                onClick={() => submitAnswer(choice)}
+              >
+                {choice}
+              </button>
+            ))}
+          </div>
+        )}
         {q.answerMode === "catalog" && (
           <>
             <AutoCompleteAnswer
@@ -931,6 +944,19 @@ export default function App() {
 
         {!submitted && (
           <>
+            {q.answerMode === "MultipleChoice" && (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {q.choices?.map((choice) => (
+                  <button
+                    key={choice}
+                    className="btn btn-neutral w-full text-center"
+                    onClick={() => submit(choice)}
+                  >
+                    {choice}
+                  </button>
+                ))}
+              </div>
+            )}
             {q.answerMode === "catalog" && (
               <AutoCompleteAnswer
                 catalog={q.catalog}
@@ -956,7 +982,7 @@ export default function App() {
               />
             )}
 
-            <div className="mt-4 flex flex-wrap justify-center gap-3">
+            {q.answerMode !== 'MultipleChoice' && <div className="mt-4 flex flex-wrap justify-center gap-3">
               {q.answerMode === "scoreline" ? (
                 <button className="btn btn-accent" onClick={() => submit(scoreValue)}>
                   Υποβολή
@@ -969,7 +995,7 @@ export default function App() {
               <button className="btn btn-neutral" onClick={() => applyStealResolution(false)}>
                 Πάσο
               </button>
-            </div>
+            </div>}
           </>
         )}
 

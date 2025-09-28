@@ -18,10 +18,8 @@ export const questions = [
     prompt: "Ποια είναι η 2η εθνικότητα του Bukayo Saka;",
     type: "open",
 
-    answerMode: "catalog",
-    catalog: "countries",
-    acceptKeys: ["NG"],
-    accept: ["Nigeria", "Νιγηρία"],
+    answerMode: "MultipleChoice",
+    choices: ["Νιγηρία", "Γκάνα", "Ακτή Ελεφαντοστού", "Καμερούν"],
     answer: "Νιγηρία",
     hint: "Αφρικανική χώρα της Δυτικής Αφρικής.",
     // catalog → two strings; include correct
