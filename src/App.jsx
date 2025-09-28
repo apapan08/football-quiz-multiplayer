@@ -708,7 +708,7 @@ export default function App() {
               <div className="flex items-center gap-2">
                 {arr.map((q) => {
                   const isUsed = state.usedQuestionIds.includes(q.id);
-                  const locked = q.phase && q.phase !== selectedPhase;
+                  const locked = q.phase && q.phase > selectedPhase;
                   const disabled = locked || isUsed;
 
                   const bg = disabled
