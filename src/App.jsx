@@ -743,8 +743,8 @@ export default function App() {
                         </span>
                       )}
                       {isUsed && !locked && (
-                        <span className="absolute -top-1 -right-1 text-xs" aria-hidden>
-                          ✓
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full" aria-hidden>
+                          <span className="text-red-500 text-2xl font-bold">X</span>
                         </span>
                       )}
                     </button>
